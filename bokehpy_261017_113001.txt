@@ -1,0 +1,113 @@
+import pandas as pd
+from bokeh.plotting import figure, output_file, save
+from bokeh.models import ColumnDataSource, HoverTool, ColorBar, LinearColorMapper
+from bokeh.transform import transform
+from bokeh.palettes import Viridis256, RdBu11
+from bokeh.layouts import gridplot
+
+class WeatherVisualizerBokeh:
+    def __init__(self):
+        self.data = None
+        print("WeatherVisualizerBokeh initialized - 2026")
+
+    def load_data(self, filepath):
+        """Loads large weather dataset (100k)"""
+        try:
+            self.data = pd.read_csv(filepath)
+            # Convert date if exists
+            if 'date' in self.data.columns:
+                self.data['date'] = pd.to_datetime(self.data['date'])
+            print(f"Data loaded: {self.data.shape}")
+            return True
+        except Exception as e:
+            print(f"Error loading data: {e}")
+            return False
+
+    def handle_interactions(self, fig):
+        """Enables zooming and panning - TechVedu Requirement"""
+        fig.tools = []
+        fig.add_tools(
+            HoverTool(),
+            "pan,wheel_zoom,box_zoom,reset,save"
+        )
+        return fig
+
+    def create_scatter_plot(self):
+        """Scatter: Temperature vs Humidity colored by Wind Speed"""
+        # Sample 20k for speed (Bokeh handles 100k but sample is faster)
+        df_plot = self.data.sample(n=min(20000, len(self.data)), random_state=42)
+        source = ColumnDataSource(df_plot)
+
+        mapper = LinearColorMapper(palette=Viridis256, 
+                                   low=df_plot['wind_speed'].min(), 
+                                   high=df_plot['wind_speed'].max())
+
+        fig = figure(title="Temperature vs Humidity (Colored by Wind Speed) - 100k 2026",
+                     x_axis_label="Temperature (°C)",
+                     y_axis_label="Humidity (%)",
+                     width=900, height=500,
+                     tools="pan,wheel_zoom,box_zoom,reset,save")
+
+        fig.circle(x='temperature', y='humidity', source=source,
+                   size=6, alpha=0.5,
+                   color=transform('wind_speed', mapper))
+
+        color_bar = ColorBar(color_mapper=mapper, label_standoff=12, title='Wind Speed')
+        fig.add_layout(color_bar, 'right')
+
+        fig.add_tools(HoverTool(tooltips=[
+            ("Temp", "@temperature{0.0}°C"),
+            ("Humidity", "@humidity{0.0}%"),
+            ("Wind", "@wind_speed{0.0} km/h"),
+            ("Precip", "@precipitation{0.0} mm")
+        ]))
+
+        return self.handle_interactions(fig)
+
+    def create_bar_chart(self):
+        """Bar: Monthly Average Temperature"""
+        monthly_avg = self.data.groupby('month')['temperature'].mean().reset_index()
+        source = ColumnDataSource(monthly_avg)
+
+        fig = figure(x_range=(0, 13), title="Monthly Average Temperature - 2026 (100k)",
+                     x_axis_label="Month", y_axis_label="Avg Temp (°C)",
+                     width=900, height=500)
+
+        fig.vbar(x='month', top='temperature', width=0.6, source=source,
+                 color="#1f77b4", alpha=0.8)
+
+        fig.add_tools(HoverTool(tooltips=[("Month", "@month"), ("Avg Temp", "@temperature{0.0}°C")]))
+
+        return self.handle_interactions(fig)
+
+    def create_heatmap(self):
+        """Heatmap: Correlation between weather fields"""
+        corr = self.data[['temperature', 'humidity', 'wind_speed', 'precipitation']].corr()
+        corr = corr.stack().reset_index()
+        corr.columns = ['x', 'y', 'value']
+
+        source = ColumnDataSource(corr)
+        mapper = LinearColorMapper(palette=RdBu11, low=-1, high=1)
+
+        fig = figure(title="Weather Correlation Heatmap - 100k 2026",
+                     x_range=list(corr['x'].unique()),
+                     y_range=list(corr['y'].unique()),
+                     width=500, height=500,
+                     tools="hover,pan,wheel_zoom,box_zoom,reset,save")
+
+        fig.rect(x='x', y='y', width=1, height=1, source=source,
+                 fill_color=transform('value', mapper),
+                 line_color=None)
+
+        fig.add_tools(HoverTool(tooltips=[("X", "@x"), ("Y", "@y"), ("Corr", "@value{0.00}")]))
+
+        color_bar = ColorBar(color_mapper=mapper, title="Correlation")
+        fig.add_layout(color_bar, 'right')
+
+        return self.handle_interactions(fig)
+
+    def save_visualization(self, fig, filename):
+        """Saves interactive HTML preserving zoom/pan"""
+        output_file(filename)
+        save(fig)
+        print(f"Saved: {filename}")

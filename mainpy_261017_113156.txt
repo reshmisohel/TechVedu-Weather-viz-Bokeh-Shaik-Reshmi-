@@ -1,0 +1,34 @@
+from weather_viz_module_bokeh import WeatherVisualizerBokeh
+
+def main():
+    print("Starting Weather Visualization - 100k Records 2026")
+    
+    # Step 1: Initialize Visualizer
+    viz = WeatherVisualizerBokeh()
+    
+    # Step 2: Load 2026 Data
+    viz.load_data('weather_100k_2026.csv')
+    print("Loaded 100k records successfully")
+    
+    # Step 3: Create Scatter Plot (Temp vs Humidity)
+    print("Creating Scatter Plot...")
+    scatter_fig = viz.create_scatter_plot()
+    viz.save_visualization(scatter_fig, 'output/scatter.html')
+    
+    # Step 4: Create Bar Chart (Monthly Avg Temp)
+    print("Creating Bar Chart...")
+    bar_fig = viz.create_bar_chart()
+    viz.save_visualization(bar_fig, 'output/bar.html')
+    
+    # Step 5: Create Heatmap (Correlation)
+    print("Creating Heatmap...")
+    heatmap_fig = viz.create_heatmap()
+    viz.save_visualization(heatmap_fig, 'output/heatmap.html')
+    
+    print("\n=== ALL DONE ===")
+    print("3 Interactive HTML files saved in /output folder")
+    print("Open them in browser to test zoom/pan")
+    print("Student: Shaik Reshmi Sohel - 2026")
+
+if __name__ == "__main__":
+    main()

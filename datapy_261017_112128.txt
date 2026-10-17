@@ -1,0 +1,21 @@
+import pandas as pd
+import numpy as np
+
+# 100k Weather Data for 2026 - Latest
+np.random.seed(42)
+n = 100000
+
+data = {
+    'date': pd.date_range(start='2026-01-01', periods=n, freq='h'),
+    'temperature': np.random.normal(28, 8, n),  # Hyderabad avg temp
+    'humidity': np.random.normal(65, 15, n),
+    'wind_speed': np.random.normal(12, 5, n),
+    'precipitation': np.random.exponential(2, n),
+    'month': np.random.randint(1, 13, n),
+    'city': ['Hyderabad'] * n
+}
+
+df = pd.DataFrame(data)
+df.to_csv('weather_100k_2026.csv', index=False)
+print("Generated 100k records for 2026 - Saved as weather_100k_2026.csv")
+print(df.head())

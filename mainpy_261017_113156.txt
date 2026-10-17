@@ -1,34 +1,43 @@
-from weather_viz_module_bokeh import WeatherVisualizerBokeh
+import pandas as pd
+import os
+from bokeh.plotting import figure, output_file, save
+from bokeh.models import ColumnDataSource, LinearColorMapper
+from bokeh.transform import transform
+from bokeh.palettes import Viridis256
 
-def main():
-    print("Starting Weather Visualization - 100k Records 2026")
-    
-    # Step 1: Initialize Visualizer
-    viz = WeatherVisualizerBokeh()
-    
-    # Step 2: Load 2026 Data
-    viz.load_data('weather_100k_2026.csv')
-    print("Loaded 100k records successfully")
-    
-    # Step 3: Create Scatter Plot (Temp vs Humidity)
-    print("Creating Scatter Plot...")
-    scatter_fig = viz.create_scatter_plot()
-    viz.save_visualization(scatter_fig, 'output/scatter.html')
-    
-    # Step 4: Create Bar Chart (Monthly Avg Temp)
-    print("Creating Bar Chart...")
-    bar_fig = viz.create_bar_chart()
-    viz.save_visualization(bar_fig, 'output/bar.html')
-    
-    # Step 5: Create Heatmap (Correlation)
-    print("Creating Heatmap...")
-    heatmap_fig = viz.create_heatmap()
-    viz.save_visualization(heatmap_fig, 'output/heatmap.html')
-    
-    print("\n=== ALL DONE ===")
-    print("3 Interactive HTML files saved in /output folder")
-    print("Open them in browser to test zoom/pan")
-    print("Student: Shaik Reshmi Sohel - 2026")
+os.makedirs('output', exist_ok=True)
+print("Loading data...")
+data = pd.read_csv('weather_100k_2026.csv')
+print(f"Loaded {data.shape}")
 
-if __name__ == "__main__":
-    main()
+# 1. Scatter
+print("Creating scatter...")
+df_plot = data.sample(n=15000, random_state=42) if len(data) > 15000 else data
+source = ColumnDataSource(df_plot)
+mapper = LinearColorMapper(palette=Viridis256, low=df_plot['wind_speed'].min(), high=df_plot['wind_speed'].max())
+p1 = figure(title="Temp vs Humidity - 2026", width=900, height=500, tools="pan,wheel_zoom,box_zoom,reset,save,hover")
+p1.scatter(x='temperature', y='humidity', source=source, size=5, alpha=0.6, color=transform('wind_speed', mapper))
+output_file('output/scatter.html')
+save(p1)
+
+# 2. Bar
+print("Creating bar...")
+monthly = data.groupby('month')['temperature'].mean().reset_index()
+monthly['month_str'] = monthly['month'].astype(str)
+source2 = ColumnDataSource(monthly)
+p2 = figure(x_range=monthly['month_str'].tolist(), title="Monthly Avg Temp - 2026", width=900, height=500, tools="pan,wheel_zoom,box_zoom,reset,save,hover")
+p2.vbar(x='month_str', top='temperature', width=0.5, source=source2)
+output_file('output/bar.html')
+save(p2)
+
+# 3. Heatmap
+print("Creating heatmap...")
+corr = data[['temperature','humidity','wind_speed','precipitation']].corr().stack().reset_index()
+corr.columns = ['x','y','value']
+source3 = ColumnDataSource(corr)
+p3 = figure(title="Correlation Heatmap - 2026", x_range=list(corr['x'].unique()), y_range=list(corr['y'].unique()), width=600, height=500, tools="pan,hover,save,reset")
+p3.rect(x='x', y='y', width=1, height=1, source=source3, fill_color=transform('value', LinearColorMapper(palette=Viridis256, low=-1, high=1)), line_color=None)
+output_file('output/heatmap.html')
+save(p3)
+
+print("ALL DONE - 3 HTML files saved in output/")
